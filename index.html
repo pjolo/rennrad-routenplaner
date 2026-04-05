@@ -4,17 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rennrad Routenplaner</title>
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <!-- Font -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -30,119 +23,128 @@
             </div>
         </header>
 
-        <!-- Main Content -->
         <main class="main-content">
-            <!-- Eingabe-Panel -->
-            <aside class="sidebar">
+            <!-- Sidebar -->
+            <aside class="sidebar" id="sidebar">
+                <!-- API Key -->
+                <div class="panel" id="apiKeyPanel">
+                    <h3><i class="fas fa-key"></i> API-Key benötigt</h3>
+                    <p class="panel-desc">Trage deinen kostenlosen OpenRouteService API-Key ein:</p>
+                    <div class="input-group">
+                        <input type="text" id="apiKeyInput" placeholder="Dein ORS API-Key...">
+                        <button id="saveApiKeyBtn" class="btn btn-small"><i class="fas fa-save"></i></button>
+                    </div>
+                    <a href="https://openrouteservice.org/dev/#/signup" target="_blank" class="api-link">
+                        <i class="fas fa-external-link-alt"></i> Kostenlosen Key holen
+                    </a>
+                </div>
+
+                <!-- Startort -->
                 <div class="panel">
                     <h2><i class="fas fa-map-marker-alt"></i> Startort</h2>
                     <div class="input-group">
-                        <label for="address">Adresse / Ort</label>
-                        <div class="input-with-icon">
-                            <input type="text" id="address" placeholder="z.B. Zürich Hauptbahnhof" autocomplete="off">
-                            <button id="btn-locate" class="btn-icon" title="Meinen Standort verwenden">
-                                <i class="fas fa-crosshairs"></i>
-                            </button>
-                        </div>
-                        <div id="address-suggestions" class="suggestions-dropdown"></div>
+                        <input type="text" id="addressInput" placeholder="Adresse eingeben..." autocomplete="off">
+                        <button id="gpsBtn" class="btn btn-icon" title="GPS verwenden">
+                            <i class="fas fa-crosshairs"></i>
+                        </button>
+                    </div>
+                    <div id="addressSuggestions" class="suggestions-list hidden"></div>
+                    <div id="selectedAddress" class="selected-address hidden">
+                        <i class="fas fa-check-circle"></i>
+                        <span id="selectedAddressText"></span>
                     </div>
                 </div>
 
+                <!-- Routentyp -->
                 <div class="panel">
-                    <h2><i class="fas fa-route"></i> Streckenparameter</h2>
-                    
-                    <div class="input-group">
-                        <label for="route-type">Routentyp</label>
-                        <div class="toggle-group">
-                            <button class="toggle-btn active" data-value="round" id="toggle-round">
-                                <i class="fas fa-sync-alt"></i> Rundkurs
-                            </button>
-                            <button class="toggle-btn" data-value="point" id="toggle-point">
-                                <i class="fas fa-arrow-right"></i> Punkt-zu-Punkt
-                            </button>
-                        </div>
+                    <h2><i class="fas fa-route"></i> Routentyp</h2>
+                    <div class="toggle-group">
+                        <button class="toggle-btn active" data-value="round" id="toggleRound">
+                            <i class="fas fa-sync-alt"></i> Rundkurs
+                        </button>
+                        <button class="toggle-btn" data-value="point" id="togglePoint">
+                            <i class="fas fa-arrow-right"></i> Punkt-zu-Punkt
+                        </button>
                     </div>
-
-                    <div class="input-group">
-                        <label for="max-distance">
-                            Maximale Distanz: <span id="distance-value" class="value-display">50 km</span>
-                        </label>
-                        <input type="range" id="max-distance" min="10" max="250" value="50" step="5">
-                        <div class="range-labels">
-                            <span>10 km</span>
-                            <span>250 km</span>
+                    <div id="destinationGroup" class="hidden" style="margin-top:15px;">
+                        <label class="input-label">Zielort</label>
+                        <div class="input-group">
+                            <input type="text" id="destinationInput" placeholder="Zieladresse..." autocomplete="off">
                         </div>
-                    </div>
-
-                    <div class="input-group">
-                        <label for="max-elevation">
-                            Maximale Höhenmeter: <span id="elevation-value" class="value-display">500 hm</span>
-                        </label>
-                        <input type="range" id="max-elevation" min="50" max="3000" value="500" step="50">
-                        <div class="range-labels">
-                            <span>50 hm</span>
-                            <span>3000 hm</span>
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <label>Geländeprofil</label>
-                        <div class="profile-group">
-                            <button class="profile-btn active" data-profile="flat">
-                                <div class="profile-icon">
-                                    <svg viewBox="0 0 60 30" class="profile-svg">
-                                        <path d="M0,25 L60,23" stroke="currentColor" stroke-width="2" fill="none"/>
-                                    </svg>
-                                </div>
-                                <span>Flach</span>
-                            </button>
-                            <button class="profile-btn" data-profile="hilly">
-                                <div class="profile-icon">
-                                    <svg viewBox="0 0 60 30" class="profile-svg">
-                                        <path d="M0,25 Q10,15 15,20 Q25,10 30,18 Q40,8 45,16 Q55,12 60,22" stroke="currentColor" stroke-width="2" fill="none"/>
-                                    </svg>
-                                </div>
-                                <span>Hügelig</span>
-                            </button>
-                            <button class="profile-btn" data-profile="mountainous">
-                                <div class="profile-icon">
-                                    <svg viewBox="0 0 60 30" class="profile-svg">
-                                        <path d="M0,28 L15,25 L30,5 L45,22 L60,25" stroke="currentColor" stroke-width="2" fill="none"/>
-                                    </svg>
-                                </div>
-                                <span>Bergig</span>
-                            </button>
+                        <div id="destinationSuggestions" class="suggestions-list hidden"></div>
+                        <div id="selectedDestination" class="selected-address hidden">
+                            <i class="fas fa-check-circle"></i>
+                            <span id="selectedDestinationText"></span>
                         </div>
                     </div>
                 </div>
 
-                <button id="btn-generate" class="btn-primary">
-                    <i class="fas fa-dice"></i> Routen generieren
+                <!-- Distanz -->
+                <div class="panel">
+                    <h2><i class="fas fa-road"></i> Maximale Distanz</h2>
+                    <div class="slider-container">
+                        <input type="range" id="distanceSlider" min="10" max="250" value="50" step="5" class="slider">
+                        <div class="slider-value"><span id="distanceValue">50</span> km</div>
+                    </div>
+                </div>
+
+                <!-- Höhenmeter -->
+                <div class="panel">
+                    <h2><i class="fas fa-mountain"></i> Maximale Höhenmeter</h2>
+                    <div class="slider-container">
+                        <input type="range" id="elevationSlider" min="50" max="3000" value="500" step="50" class="slider">
+                        <div class="slider-value"><span id="elevationValue">500</span> hm</div>
+                    </div>
+                </div>
+
+                <!-- Geländeprofil -->
+                <div class="panel">
+                    <h2><i class="fas fa-chart-area"></i> Geländeprofil</h2>
+                    <div class="profile-group">
+                        <button class="profile-btn active" data-value="flat">
+                            <i class="fas fa-minus"></i><span>Flach</span>
+                        </button>
+                        <button class="profile-btn" data-value="hilly">
+                            <i class="fas fa-wave-square"></i><span>Hügelig</span>
+                        </button>
+                        <button class="profile-btn" data-value="mountain">
+                            <i class="fas fa-mountain"></i><span>Bergig</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Generieren Button -->
+                <button id="generateBtn" class="btn btn-generate" disabled>
+                    <i class="fas fa-magic"></i> Routen generieren
                 </button>
 
                 <!-- Ergebnisse -->
-                <div id="results-panel" class="panel results-panel" style="display:none;">
-                    <h2><i class="fas fa-list-ol"></i> Routenvorschläge</h2>
-                    <div id="route-list" class="route-list"></div>
+                <div id="resultsPanel" class="panel hidden">
+                    <h2><i class="fas fa-list"></i> Routenvorschläge</h2>
+                    <div id="routeCards"></div>
                 </div>
             </aside>
 
-            <!-- Karte & Höhenprofil -->
+            <!-- Karte -->
             <section class="map-section">
-                <div id="map" class="map-container"></div>
-                <div id="elevation-chart-container" class="elevation-container" style="display:none;">
-                    <h3><i class="fas fa-mountain"></i> Höhenprofil</h3>
-                    <canvas id="elevation-chart"></canvas>
+                <div id="map"></div>
+                <!-- Loading Overlay -->
+                <div id="loadingOverlay" class="loading-overlay hidden">
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <p id="loadingText">Routen werden berechnet...</p>
+                    </div>
                 </div>
             </section>
         </main>
 
-        <!-- Loading Overlay -->
-        <div id="loading-overlay" class="loading-overlay" style="display:none;">
-            <div class="loading-content">
-                <div class="spinner"></div>
-                <p id="loading-text">Routen werden berechnet...</p>
+        <!-- Höhenprofil -->
+        <div id="elevationPanel" class="elevation-panel hidden">
+            <div class="elevation-header">
+                <h3><i class="fas fa-chart-area"></i> Höhenprofil – <span id="elevationRouteName"></span></h3>
+                <button id="closeElevation" class="btn btn-icon"><i class="fas fa-times"></i></button>
             </div>
+            <canvas id="elevationChart"></canvas>
         </div>
     </div>
 
@@ -150,10 +152,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="js/config.js"></script>
-    <script src="js/gpx.js"></script>
-    <script src="js/elevation.js"></script>
-    <script src="js/routing.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
-
