@@ -5,7 +5,7 @@
 const CONFIG = {
     // OpenRouteService API Key - Kostenlos registrieren:
     // https://openrouteservice.org/dev/#/signup
-    ORS_API_KEY: 'DEIN_API_KEY_HIER',
+    ORS_API_KEY: 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImJjMzNkYjk2YmZjZTQ3YTlhMDlkZWI2ZThiZjQ5ZTdlIiwiaCI6Im11cm11cjY0In0=',
 
     // Nominatim (OpenStreetMap) für Geocoding - kein Key nötig
     NOMINATIM_URL: 'https://nominatim.openstreetmap.org',
