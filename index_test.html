@@ -3,300 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RoadBike Route Generator & Elevation</title>
+    <title>RoadBike Route Generator v4</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/togpx/togpx.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* Sicherstellen, dass die Karte wirklich Platz wegnimmt */
+        #map { 
+            height: 500px; 
+            width: 100%; 
+            background: #242424; /* Platzhalter-Farbe */
+            border-radius: 12px;
+        }
+    </style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
+<body class="bg-gray-900 text-gray-100 min-h-screen font-sans">
 
-    <div class="max-w-5xl mx-auto p-4 md:p-6">
+    <div class="max-w-5xl mx-auto p-4">
         <header class="text-center py-6">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-500 tracking-tight">🚴‍♂️ Route-Roulette Pro</h1>
-            <p class="text-gray-400 mt-2">Zufällige Rennrad-Touren mit Höhenprofil (Flach-Garantie)</p>
+            <h1 class="text-3xl font-extrabold text-blue-500 italic">ROUTE ROULETTE</h1>
+            <p class="text-gray-400">Rennrad-Touren | Flach & Sicher</p>
         </header>
 
-        <div class="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700 mb-6">
+        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 mb-6 shadow-xl">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-gray-500 mb-1">API Key (ORS)</label>
-                    <input id="apiKey" type="password" placeholder="Dein ORS Key" class="w-full bg-gray-900 border border-gray-600 p-2 rounded focus:border-blue-500 outline-none transition">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">ORS API KEY</label>
+                    <input id="apiKey" type="password" placeholder="Hier Key einfügen" class="w-full bg-gray-900 border border-gray-700 p-2 rounded text-white focus:border-blue-500 outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-gray-500 mb-1">Startadresse</label>
-                    <input id="startAddr" type="text" placeholder="z.B. Berlin, Schlossplatz" class="w-full bg-gray-900 border border-gray-600 p-2 rounded focus:border-blue-500 outline-none transition">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">STARTORT</label>
+                    <input id="startAddr" type="text" placeholder="z.B. Hamburg" class="w-full bg-gray-900 border border-gray-700 p-2 rounded text-white focus:border-blue-500 outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-gray-500 mb-1">Max. Distanz (km)</label>
-                    <input id="maxDist" type="number" value="60" class="w-full bg-gray-900 border border-gray-600 p-2 rounded focus:border-blue-500 outline-none transition">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">DISTANZ (KM)</label>
+                    <input id="maxDist" type="number" value="50" class="w-full bg-gray-900 border border-gray-700 p-2 rounded text-white">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-gray-500 mb-1">Max. Hm (Toleranz)</label>
-                    <input id="maxElev" type="number" value="300" class="w-full bg-gray-900 border border-gray-600 p-2 rounded focus:border-blue-500 outline-none transition">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">MAX. HÖHENMETER</label>
+                    <input id="maxElev" type="number" value="300" class="w-full bg-gray-900 border border-gray-700 p-2 rounded text-white">
                 </div>
             </div>
 
-            <button id="generateBtn" onclick="generateRoute()" class="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
-                <span>Neue Strecke würfeln</span> 🎲
+            <button onclick="startProcess()" class="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-lg transition shadow-lg uppercase tracking-widest">
+                Strecke berechnen 🎲
             </button>
+            <div id="status" class="mt-4 text-center text-sm font-mono text-blue-400 hidden"></div>
         </div>
 
-        <div id="errorBox" class="hidden bg-red-900/50 border border-red-700 text-red-200 p-4 rounded-lg mb-6 text-center font-medium"></div>
+        <div id="map"></div>
 
-        <div id="map" class="h-[400px] md:h-[500px] w-full rounded-xl border border-gray-700 shadow-inner z-0"></div>
-
-        <div id="resultsArea" class="hidden space-y-6 mt-6">
-            <div class="bg-gray-800 p-5 rounded-xl border border-blue-900/50 flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div>
-                    <h3 class="font-bold text-xl text-blue-400">Strecke gefunden!</h3>
-                    <p id="stats" class="text-gray-300 text-base mt-1"></p>
-                </div>
-                <button onclick="downloadGPX()" class="w-full sm:w-auto bg-green-600 hover:bg-green-500 px-8 py-3 rounded-lg font-bold text-white transition shadow-md active:scale-95 flex items-center justify-center gap-2">
-                    💾 <span>GPX Exportieren</span>
-                </button>
+        <div id="results" class="hidden mt-6 space-y-6">
+            <div class="bg-gray-800 p-4 rounded-xl border border-blue-500/30 flex justify-between items-center">
+                <div id="statLabel" class="text-lg font-bold"></div>
+                <button onclick="downloadGPX()" class="bg-green-600 hover:bg-green-500 px-6 py-2 rounded font-bold uppercase text-xs">GPX Download</button>
             </div>
-
-            <div class="bg-gray-800 p-5 rounded-xl border border-gray-700">
-                <h3 class="font-bold text-lg text-gray-100 mb-4 flex items-center gap-2">🏔️ <span>Höhenprofil</span></h3>
-                <div class="h-40 w-full">
-                    <canvas id="elevationChart"></canvas>
-                </div>
+            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
+                <canvas id="elevationChart" height="100"></canvas>
             </div>
         </div>
     </div>
 
-    <script>
-        // --- Globale Variablen ---
-        let map = L.map('map', { zoomControl: true }).setView([51.1657, 10.4515], 6);
-        let currentRouteGeoJSON = null;
-        let routeLayer = null;
-        let elevationChartInstance = null; // Für Zerstörung/Neuerstellung des Charts
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/togpx/togpx.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        // --- Karten-Initialisierung (Fix: Standard OSM) ---
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    <script>
+        // 1. Karte sofort beim Laden initialisieren
+        let map = L.map('map').setView([51.16, 10.45], 6);
+        
+        // Google Maps-ähnlicher Style (CartoDB Voyager)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
         }).addTo(map);
 
-        // Positioniere Zoom-Buttons um, damit sie nicht stören (optional)
-        map.zoomControl.setPosition('bottomright');
+        let routeLayer, chartInstance, currentData;
+        let attemptCount = 0;
 
+        function startProcess() {
+            attemptCount = 0;
+            document.getElementById('status').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+            if (routeLayer) map.removeLayer(routeLayer);
+            generate();
+        }
 
-        async function generateRoute() {
-            const btn = document.getElementById('generateBtn');
-            const errorBox = document.getElementById('errorBox');
-            const resultsArea = document.getElementById('resultsArea');
-            
-            // UI Reset
-            errorBox.classList.add('hidden');
-            errorBox.innerText = "";
-            resultsArea.classList.add('hidden');
-            if(routeLayer) map.removeLayer(routeLayer);
-            btn.innerHTML = "<span>Berechne...</span> <span class='animate-spin'>⏳</span>";
-            btn.disabled = true;
-
+        async function generate() {
+            attemptCount++;
             const key = document.getElementById('apiKey').value;
             const addr = document.getElementById('startAddr').value;
             const dist = document.getElementById('maxDist').value;
-            const maxHm = document.getElementById('maxElev').value;
+            const maxHm = parseInt(document.getElementById('maxElev').value);
+            const status = document.getElementById('status');
 
-            if (!key || !addr || !dist || !maxHm) {
-                showError("Bitte alle Felder ausfüllen (inkl. API Key).");
-                resetBtn();
-                return;
-            }
+            if (!key) return alert("Bitte ORS API Key eingeben!");
+
+            status.innerText = `[Versuch ${attemptCount}] Suche Route...`;
 
             try {
-                // 1. Geocoding
-                const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`);
-                const geoData = await geoRes.json();
-                if (geoData.length === 0) throw new Error("Startort wurde nicht gefunden.");
-                const lon = geoData[0].lon;
-                const lat = geoData[0].lat;
+                // Geocoding
+                const gRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`);
+                const gData = await gRes.json();
+                if (gData.length === 0) throw new Error("Ort nicht gefunden");
+                const [lon, lat] = [gData[0].lon, gData[0].lat];
 
-                // 2. API Call an OpenRouteService (Round Trip)
-                const randomSeed = Math.floor(Math.random() * 9999); // Mehr Zufall
+                // API Call
                 const response = await fetch('https://api.openrouteservice.org/v2/directions/cycling-road/geojson', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': key
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': key },
                     body: JSON.stringify({
                         coordinates: [[lon, lat]],
-                        options: {
-                            round_trip: {
-                                length: dist * 1000, // km zu m
-                                seed: randomSeed
-                            },
-                            avoid_features: ["highways", "tollways"] // Zusätzliche Sicherheit
-                        },
-                        elevation: true // WICHTIG für Höhenprofil
+                        options: { round_trip: { length: dist * 1000, seed: Math.floor(Math.random() * 9999) } },
+                        elevation: true
                     })
                 });
 
-                if(!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error?.message || "Fehler bei der Routenberechnung.");
-                }
-
                 const data = await response.json();
-                if (!data.features || data.features.length === 0) throw new Error("Keine passende Route gefunden.");
-
                 const route = data.features[0];
-                const summary = route.properties.summary;
-                const actualHm = summary.ascent;
+                const hm = route.properties.summary.ascent;
 
-                // 3. Höhenmeter-Check & Rekursion falls zu bergig
-                if (actualHm > maxHm) {
-                    console.log(`Route ignoriert: ${Math.round(actualHm)}m Hm > ${maxHm}m Limit. Neuer Versuch...`);
-                    // Ein kleiner Trick, um Endlosschleifen zu verhindern: Wir rufen die Funktion erneut auf.
-                    // Da der 'seed' zufällig ist, kommt eine andere Strecke.
-                    return generateRoute(); 
+                // Check Höhenmeter
+                if (hm > maxHm && attemptCount < 5) {
+                    status.innerText = `Route zu hügelig (${Math.round(hm)}m)... neuer Versuch...`;
+                    return setTimeout(generate, 300);
                 }
 
-                // 4. Erfolg: Anzeigen
-                displayRouteSuccess(data, summary);
+                status.innerText = "Fertig!";
+                showRoute(data);
 
-            } catch (err) {
-                showError(err.message);
-            } finally {
-                resetBtn();
+            } catch (e) {
+                alert("Fehler: " + e.message);
+                status.innerText = "";
             }
         }
 
-        function displayRouteSuccess(data, summary) {
-            currentRouteGeoJSON = data;
+        function showRoute(data) {
+            currentData = data;
+            const s = data.features[0].properties.summary;
             
-            // Auf Karte anzeigen
-            routeLayer = L.geoJSON(data, {
-                style: { color: '#3b82f6', weight: 5, opacity: 0.85 }
-            }).addTo(map);
-            
-            // Karte auf Route zoomen
-            map.fitBounds(routeLayer.getBounds(), {padding: [20, 20]});
-            
-            // Stats Text update
-            document.getElementById('stats').innerHTML = 
-                `Distanz: <b>${(summary.distance / 1000).toFixed(1)} km</b> | ` +
-                `Höhenmeter: <b class="text-green-400">${Math.round(summary.ascent)} m</b> 🏔️`;
+            routeLayer = L.geoJSON(data, { style: { color: '#3b82f6', weight: 6, opacity: 0.9 } }).addTo(map);
+            map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
 
-            // Höhenprofil zeichnen
-            drawElevationChart(data.features[0].geometry.coordinates);
-
-            // Container einblenden
-            document.getElementById('resultsArea').classList.remove('hidden');
+            document.getElementById('statLabel').innerHTML = `${(s.distance/1000).toFixed(1)} km | <span class="text-green-400">${Math.round(s.ascent)} Hm</span>`;
+            document.getElementById('results').classList.remove('hidden');
+            
+            drawChart(data.features[0].geometry.coordinates);
         }
 
-        function drawElevationChart(coordinates) {
-            // Daten aufbereiten: ORS liefert [lon, lat, elev]
-            // Wir brauchen Distanz (X-Achse) vs. Höhe (Y-Achse)
-            
-            let currentDist = 0;
-            const chartData = [];
-            const labels = [];
-
-            // Helferfunktion für Distanz zwischen zwei Coords (Haversine vereinfacht)
-            function getDist(coord1, coord2) {
-                const R = 6371000; // Erdradius in m
-                const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
-                const dLon = (coord2[0] - coord1[0]) * Math.PI / 180;
-                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                          Math.cos(coord1[1] * Math.PI / 180) * Math.cos(coord2[1] * Math.PI / 180) *
-                          Math.sin(dLon/2) * Math.sin(dLon/2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                return R * c;
-            }
-
-            for (let i = 0; i < coordinates.length; i++) {
-                const elev = coordinates[i][2]; // Die Höhe ist der dritte Wert
-                
-                if (i > 0) {
-                    currentDist += getDist(coordinates[i-1], coordinates[i]);
-                }
-
-                // Wir nehmen nicht jeden Punkt (Performance), nur alle ~500m oder wenn es signifikant ist.
-                // Für dieses Beispiel nehmen wir einfach jeden 5. Punkt für ein glatteres Chart.
-                if (i % 5 === 0 || i === coordinates.length -1) {
-                    chartData.push(elev);
-                    labels.push((currentDist / 1000).toFixed(1)); // km
-                }
-            }
-
-            // Altes Chart zerstören, falls vorhanden
-            if (elevationChartInstance) {
-                elevationChartInstance.destroy();
-            }
-
-            // Neues Chart.js Diagramm erstellen
+        function drawChart(coords) {
+            const elevs = coords.map(c => c[2]);
+            if (chartInstance) chartInstance.destroy();
             const ctx = document.getElementById('elevationChart').getContext('2d');
-            
-            // Gradient für die Füllung erstellen
-            const gradient = ctx.createLinearGradient(0, 0, 0, 150);
-            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)'); // Blue
-            gradient.addColorStop(1, 'rgba(59, 130, 246, 0.01)');
-
-            elevationChartInstance = new Chart(ctx, {
+            chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: labels, // X-Achse (km)
-                    datasets: [{
-                        label: 'Höhe (m)',
-                        data: chartData,
-                        fill: true,
-                        backgroundColor: gradient,
-                        borderColor: '#3b82f6',
-                        borderWidth: 2,
-                        pointRadius: 0, // Keine Punkte anzeigen
-                        tension: 0.3, // Abrundung
-                    }]
+                    labels: elevs.map((_, i) => i),
+                    datasets: [{ label: 'Meter', data: elevs, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: '#3b82f6', pointRadius: 0, borderWidth: 2 }]
                 },
-                options: {
-                    responsive: true,
+                options: { 
+                    responsive: true, 
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { intersect: false, mode: 'index'} },
-                    scales: {
-                        x: { 
-                            title: { display: true, text: 'km', color: '#9ca3af' },
-                            grid: { display: false },
-                            ticks: { color: '#9ca3af', maxRotation: 0 }
-                        },
-                        y: { 
-                            title: { display: true, text: 'Meter', color: '#9ca3af' },
-                            grid: { color: 'rgba(75, 85, 99, 0.3)' },
-                            ticks: { color: '#9ca3af' }
-                        }
-                    },
-                    interaction: { mode: 'index', intersect: false }
+                    plugins: { legend: { display: false } },
+                    scales: { x: { display: false }, y: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } } }
                 }
             });
         }
 
-        // --- Hilfsfunktionen ---
         function downloadGPX() {
-            if (!currentRouteGeoJSON) return;
-            const gpx = togpx(currentRouteGeoJSON);
+            const gpx = togpx(currentData);
             const blob = new Blob([gpx], {type: 'application/gpx+xml'});
-            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
-            a.download = `rennrad_tour_${Math.round(summary.distance/1000)}km_${Math.random().toString(36).substring(7)}.gpx`;
+            a.href = URL.createObjectURL(blob);
+            a.download = "tour.gpx";
             a.click();
-        }
-
-        function showError(msg) {
-            const box = document.getElementById('errorBox');
-            box.innerText = msg;
-            box.classList.remove('hidden');
-            window.scrollTo(0, 0); // Nach oben scrollen damit man den Fehler sieht
-        }
-
-        function resetBtn() {
-            const btn = document.getElementById('generateBtn');
-            btn.innerHTML = "<span>Neue Strecke würfeln</span> 🎲";
-            btn.disabled = false;
         }
     </script>
 </body>
