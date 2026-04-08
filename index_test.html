@@ -181,5 +181,123 @@
             // Stats Text update
             document.getElementById('stats').innerHTML = 
                 `Distanz: <b>${(summary.distance / 1000).toFixed(1)} km</b> | ` +
-                `Höhenmeter: <b class="text-green-400">${Math
-                                                         
+                `Höhenmeter: <b class="text-green-400">${Math.round(summary.ascent)} m</b> 🏔️`;
+
+            // Höhenprofil zeichnen
+            drawElevationChart(data.features[0].geometry.coordinates);
+
+            // Container einblenden
+            document.getElementById('resultsArea').classList.remove('hidden');
+        }
+
+        function drawElevationChart(coordinates) {
+            // Daten aufbereiten: ORS liefert [lon, lat, elev]
+            // Wir brauchen Distanz (X-Achse) vs. Höhe (Y-Achse)
+            
+            let currentDist = 0;
+            const chartData = [];
+            const labels = [];
+
+            // Helferfunktion für Distanz zwischen zwei Coords (Haversine vereinfacht)
+            function getDist(coord1, coord2) {
+                const R = 6371000; // Erdradius in m
+                const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
+                const dLon = (coord2[0] - coord1[0]) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                          Math.cos(coord1[1] * Math.PI / 180) * Math.cos(coord2[1] * Math.PI / 180) *
+                          Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+
+            for (let i = 0; i < coordinates.length; i++) {
+                const elev = coordinates[i][2]; // Die Höhe ist der dritte Wert
+                
+                if (i > 0) {
+                    currentDist += getDist(coordinates[i-1], coordinates[i]);
+                }
+
+                // Wir nehmen nicht jeden Punkt (Performance), nur alle ~500m oder wenn es signifikant ist.
+                // Für dieses Beispiel nehmen wir einfach jeden 5. Punkt für ein glatteres Chart.
+                if (i % 5 === 0 || i === coordinates.length -1) {
+                    chartData.push(elev);
+                    labels.push((currentDist / 1000).toFixed(1)); // km
+                }
+            }
+
+            // Altes Chart zerstören, falls vorhanden
+            if (elevationChartInstance) {
+                elevationChartInstance.destroy();
+            }
+
+            // Neues Chart.js Diagramm erstellen
+            const ctx = document.getElementById('elevationChart').getContext('2d');
+            
+            // Gradient für die Füllung erstellen
+            const gradient = ctx.createLinearGradient(0, 0, 0, 150);
+            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)'); // Blue
+            gradient.addColorStop(1, 'rgba(59, 130, 246, 0.01)');
+
+            elevationChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels, // X-Achse (km)
+                    datasets: [{
+                        label: 'Höhe (m)',
+                        data: chartData,
+                        fill: true,
+                        backgroundColor: gradient,
+                        borderColor: '#3b82f6',
+                        borderWidth: 2,
+                        pointRadius: 0, // Keine Punkte anzeigen
+                        tension: 0.3, // Abrundung
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { intersect: false, mode: 'index'} },
+                    scales: {
+                        x: { 
+                            title: { display: true, text: 'km', color: '#9ca3af' },
+                            grid: { display: false },
+                            ticks: { color: '#9ca3af', maxRotation: 0 }
+                        },
+                        y: { 
+                            title: { display: true, text: 'Meter', color: '#9ca3af' },
+                            grid: { color: 'rgba(75, 85, 99, 0.3)' },
+                            ticks: { color: '#9ca3af' }
+                        }
+                    },
+                    interaction: { mode: 'index', intersect: false }
+                }
+            });
+        }
+
+        // --- Hilfsfunktionen ---
+        function downloadGPX() {
+            if (!currentRouteGeoJSON) return;
+            const gpx = togpx(currentRouteGeoJSON);
+            const blob = new Blob([gpx], {type: 'application/gpx+xml'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `rennrad_tour_${Math.round(summary.distance/1000)}km_${Math.random().toString(36).substring(7)}.gpx`;
+            a.click();
+        }
+
+        function showError(msg) {
+            const box = document.getElementById('errorBox');
+            box.innerText = msg;
+            box.classList.remove('hidden');
+            window.scrollTo(0, 0); // Nach oben scrollen damit man den Fehler sieht
+        }
+
+        function resetBtn() {
+            const btn = document.getElementById('generateBtn');
+            btn.innerHTML = "<span>Neue Strecke würfeln</span> 🎲";
+            btn.disabled = false;
+        }
+    </script>
+</body>
+</html>
